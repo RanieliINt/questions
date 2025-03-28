@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lei Orgânica - Questões</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f6f7f8;
+      color: #222;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 24px;
+      font-weight: 600;
+    }
+    nav {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    nav button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 12px;
+      background-color: #e5e7eb;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background 0.3s ease;
+    }
+    nav button.active, nav button:hover {
+      background-color: #4f46e5;
+      color: #fff;
+    }
+    .tab {
+      display: none;
+    }
+    .tab.active {
+      display: block;
+    }
+    .question, .filter, .dashboard {
+      background: #fff;
+      padding: 20px;
+      border-radius: 16px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    .question p {
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .option {
+      display: block;
+      padding: 10px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      margin: 6px 0;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .option:hover {
+      background-color: #f3f4f6;
+    }
+    .option.eliminated {
+      background-color: #fee2e2;
+      text-decoration: line-through;
+      color: #9ca3af;
+    }
+    .correct {
+      background-color: #dcfce7 !important;
+      border-color: #22c55e !important;
+    }
+    .incorrect {
+      background-color: #fee2e2 !important;
+      border-color: #ef4444 !important;
+    }
+    select {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #d1d5db;
+      font-size: 14px;
+    }
+    canvas {
+      max-width: 500px;
+      margin: 20px auto;
+      display: block;
+    }
+      @media (max-width: 600px) {
+      body {
+        padding: 10px;
+      }
+      h1 {
+        font-size: 20px;
+        margin-bottom: 20px;
+      }
+      nav {
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+      }
+      nav button {
+        width: 100%;
+        max-width: 300px;
+      }
+      .question, .filter, .dashboard {
+        padding: 16px;
+      }
+      select {
+        font-size: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <button onclick="showTab('questoes')" class="active">Questões</button>
+    <button onclick="showTab('dashboard')">Painel de Desempenho</button>
+    <button onclick="showTab('historico')">Histórico Diário</button>
+    <button onclick="startSimulado()">Modo Simulado</button>
+  </nav>
+
+  <div id="questoes" class="tab active">
+    <div class="filter">
+      <label for="temaSelect">Filtrar por tema:</label>
+      <select id="temaSelect" onchange="filtrarPorTema()">
+        <option value="todos">Todos os Títulos</option>
+        <option value="Título I">Título I – Do Município</option>
+        <option value="Título II">Título II – Da Organização dos Poderes</option>
+        <option value="Título III">Título III – Da Administração Municipal</option>
+        <option value="Título IV">Título IV – Do Planejamento Municipal, da Política Urbana e da Proteção do Meio Ambiente</option>
+        <option value="Título V">Título V – Da Atividade Econômica e Social do Município</option>
+        <option value="Título VI">Título VI – Das Disposições Gerais e Transitórias</option>
+      </select>
+    </div>
+    <div id="questions"></div>
+<div style="text-align: right; margin-top: 10px;">
+  <button id="nextBtn" style="padding: 8px 16px; border-radius: 8px; border: none; background-color: #4f46e5; color: white; cursor: pointer;">Próxima ➜</button>
+</div>
+    <div class="progress" style="margin-top: 10px; font-size: 14px;"></div>
+  </div>
+
+  <div id="dashboard" class="tab">
+    <div class="dashboard">
+      <h3>Desempenho Geral</h3>
+      <p>Total de questões respondidas: <span id="totalResp">0</span></p>
+      <p>Acertos: <span id="totalAcertos">0</span></p>
+      <p>Erros: <span id="totalErros">0</span></p>
+      <canvas id="graficoDesempenho"></canvas>
+    </div>
+    <div class="dashboard">
+      <h3>Desempenho por Tema</h3>
+      <canvas id="graficoTemas"></canvas>
+    </div>
+  </div>
+
+  <div id="historico" class="tab">
+    <div class="dashboard">
+      <h3>Histórico Diário</h3>
+      <div id="historicoConteudo"></div>
+    </div>
+  </div>
+
+  <div id="simulado" class="tab">
+    <div class="dashboard">
+      <h3>Modo Simulado</h3>
+      <p>Selecione quantas questões deseja responder:</p>
+      <input type="number" id="qtdSimulado" placeholder="Ex: 10" style="width: 100%; padding: 8px; margin: 10px 0;">
+      <button onclick="iniciarSimulado()" style="padding: 10px 20px; border: none; background: #4f46e5; color: white; border-radius: 8px; cursor: pointer;">Iniciar</button>
+      <div id="simuladoQuestoes"></div>
+      <div id="resultadoSimulado"></div>
+    </div>
+  </div>
+<script>
+let questions = [
+  {
+    text: "O Município de São João da Boa Vista reger-se-á:",
+    options: {
+      A: "Por decreto legislativo aprovado pela Câmara.",
+      B: "Pela Constituição do Estado de São Paulo.",
+      C: "Pela Lei Orgânica Municipal.",
+      D: "Pelo Código Municipal de Posturas."
+    },
+    correct: "C",
+    tema: "Título I"
+  },
+  {
+    text: "O Governo Municipal é exercido por:",
+    options: {
+      A: "Prefeito e Juiz de Direito.",
+      B: "Câmara de Vereadores e Tribunal de Contas.",
+      C: "Prefeito e Câmara de Vereadores.",
+      D: "Vereadores e Vice-prefeito."
+    },
+    correct: "C",
+    tema: "Título I"
+  },
+  {
+    text: "Sobre os bens do Município, é correto afirmar:",
+    options: {
+      A: "São apenas os bens imóveis localizados dentro do perímetro urbano.",
+      B: "São somente os bens adquiridos por doação.",
+      C: "Compreendem todos os bens móveis e imóveis, direitos e ações.",
+      D: "São exclusivamente os bens da Câmara Municipal."
+    },
+    correct: "C",
+    tema: "Título I"
+  },
+  // Questões do Título I (continuação) - já inseridas
+  },
+  // Questões do Título II – Da Organização dos Poderes
+  },
+  // Questões do Título III – Da Administração Municipal
+  },
+  // Questões do Título IV – Do Planejamento Municipal, da Política Urbana e da Proteção do Meio Ambiente
+  {
+    text: "O processo de planejamento municipal deve ser:",
+    options: {
+      A: "Rígido, com metas imutáveis.",
+      B: "Baseado apenas em planos estaduais.",
+      C: "Permanente, contínuo e descentralizado.",
+      D: "Controlado exclusivamente pelo Executivo."
+    },
+    correct: "C",
+    tema: "Título IV"
+  },
+  {
+    text: "O Plano Diretor deve:",
+    options: {
+      A: "Ser elaborado a cada 10 anos pelo Governo Federal.",
+      B: "Tratar apenas da área urbana.",
+      C: "Abranger a totalidade do território do Município.",
+      D: "Ser aprovado por referendo obrigatório."
+    },
+    correct: "C",
+    tema: "Título IV"
+  },
+  {
+    text: "O plano de governo deve ser apresentado pelo Prefeito em até:",
+    options: {
+      A: "90 dias após a posse.",
+      B: "180 dias após a posse.",
+      C: "60 dias após a posse.",
+      D: "30 dias após a posse."
+    },
+    correct: "B",
+    tema: "Título IV"
+  },
+  {
+    text: "A função social da cidade está relacionada:",
+    options: {
+      A: "Ao uso exclusivamente econômico do solo urbano.",
+      B: "À preservação do patrimônio ambiental e cultural.",
+      C: "À atuação de empresas privadas.",
+      D: "Ao crescimento desordenado."
+    },
+    correct: "B",
+    tema: "Título IV"
+  },
+  {
+    text: "O parcelamento ou edificação compulsória pode ser exigido:",
+    options: {
+      A: "Por decisão do Executivo, sem lei.",
+      B: "Por imposição do Estado.",
+      C: "Mediante lei específica, quando não houver aproveitamento adequado do solo.",
+      D: "Apenas para imóveis comerciais."
+    },
+    correct: "C",
+    tema: "Título IV"
+  }
+  {
+    text: "A administração pública direta, indireta e fundacional do Município obedecerá, entre outros, ao princípio da:",
+    options: {
+      A: "Exclusividade.",
+      B: "Inafastabilidade.",
+      C: "Publicidade.",
+      D: "Subsidiariedade."
+    },
+    correct: "C",
+    tema: "Título III"
+  },
+  {
+    text: "A investidura em cargos ou empregos públicos depende de:",
+    options: {
+      A: "Nomeação por autoridade competente.",
+      B: "Aprovação prévia em concurso público.",
+      C: "Eleição direta.",
+      D: "Nomeação do Presidente da Câmara."
+    },
+    correct: "B",
+    tema: "Título III"
+  },
+  {
+    text: "O prazo de validade de um concurso público será:",
+    options: {
+      A: "De um ano, prorrogável uma única vez por seis meses.",
+      B: "Indeterminado.",
+      C: "De até dois anos, prorrogável uma única vez por igual período.",
+      D: "De até cinco anos."
+    },
+    correct: "C",
+    tema: "Título III"
+  },
+  {
+    text: "Os vencimentos dos cargos do Legislativo:",
+    options: {
+      A: "Podem ser superiores aos do Executivo.",
+      B: "São fixados livremente por decreto.",
+      C: "Não podem ser superiores aos do Executivo.",
+      D: "Podem ser reajustados sem critério."
+    },
+    correct: "C",
+    tema: "Título III"
+  },
+  {
+    text: "É permitida a acumulação remunerada de cargos públicos apenas quando:",
+    options: {
+      A: "Não houver acúmulo de vencimentos.",
+      B: "Houver compatibilidade de horários e nos casos previstos na Constituição.",
+      C: "Os cargos forem da iniciativa privada.",
+      D: "Forem cargos de confiança."
+    },
+    correct: "B",
+    tema: "Título III"
+  },
+  {
+    text: "O regime jurídico único aplica-se aos servidores da:",
+    options: {
+      A: "Administração direta apenas.",
+      B: "Câmara Municipal apenas.",
+      C: "Administração direta, autarquias e fundações públicas.",
+      D: "Empresas privadas conveniadas."
+    },
+    correct: "C",
+    tema: "Título III"
+  },
+  {
+    text: "O adicional por tempo de serviço de 25% é garantido à servidora municipal após:",
+    options: {
+      A: "10 anos.",
+      B: "20 anos.",
+      C: "25 anos.",
+      D: "30 anos."
+    },
+    correct: "C",
+    tema: "Título III"
+  }
+  {
+    text: "O Poder Legislativo Municipal é exercido:",
+    options: {
+      A: "Pela Câmara de Vereadores e pelo Prefeito.",
+      B: "Pela Câmara de Vereadores, composta por membros vitalícios.",
+      C: "Pela Câmara de Vereadores, eleita por voto direto e secreto.",
+      D: "Pela Assembleia Legislativa Estadual."
+    },
+    correct: "C",
+    tema: "Título II"
+  },
+  {
+    text: "O número de Vereadores será:",
+    options: {
+      A: "Definido pela Câmara a cada legislatura, sem limites.",
+      B: "Fixo em 11 vereadores.",
+      C: "Proporcional à população, conforme a Constituição Federal.",
+      D: "Determinado por plebiscito popular."
+    },
+    correct: "C",
+    tema: "Título II"
+  },
+  {
+    text: "A eleição da Mesa da Câmara ocorre:",
+    options: {
+      A: "Por nomeação do Prefeito.",
+      B: "Na última sessão de cada ano.",
+      C: "No primeiro dia do primeiro ano de cada legislatura.",
+      D: "Após a posse dos vereadores, com maioria absoluta."
+    },
+    correct: "D",
+    tema: "Título II"
+  },
+  {
+    text: "É vedada a reeleição para o mesmo cargo da Mesa da Câmara:",
+    options: {
+      A: "A qualquer tempo.",
+      B: "No mesmo mandato de 4 anos.",
+      C: "Durante o segundo biênio.",
+      D: "Durante o mesmo mandato de 2 anos."
+    },
+    correct: "D",
+    tema: "Título II"
+  },
+  {
+    text: "É atribuição privativa da Câmara Municipal:",
+    options: {
+      A: "Conceder anistias penais.",
+      B: "Declarar guerra.",
+      C: "Julgar as contas do Prefeito.",
+      D: "Nomear os secretários municipais."
+    },
+    correct: "C",
+    tema: "Título II"
+  },
+  {
+    text: "O Prefeito e Vice-Prefeito tomam posse:",
+    options: {
+      A: "Em sessão da Assembleia Legislativa.",
+      B: "No dia 2 de janeiro, às 12h.",
+      C: "Em sessão da Câmara Municipal no dia 1º de janeiro.",
+      D: "Em solenidade na Prefeitura."
+    },
+    correct: "C",
+    tema: "Título II"
+  },
+  {
+    text: "O Prefeito poderá se ausentar do Município por mais de 15 dias:",
+    options: {
+      A: "Sem necessidade de autorização.",
+      B: "Com aprovação do Tribunal de Contas.",
+      C: "Apenas mediante licença da Câmara Municipal.",
+      D: "Com comunicação ao Vice-Prefeito."
+    },
+    correct: "C",
+    tema: "Título II"
+  },
+  {
+    text: "Compete ao Presidente da Câmara:",
+    options: {
+      A: "Aprovar convênios com a União.",
+      B: "Promulgar leis com sanção tácita.",
+      C: "Conceder licenças para estabelecimentos comerciais.",
+      D: "Executar programas de governo."
+    },
+    correct: "B",
+    tema: "Título II"
+  },
+  {
+    text: "A criação de distritos exige:",
+    options: {
+      A: "Lei aprovada apenas pela Câmara.",
+      B: "Referendo popular e aprovação federal.",
+      C: "Lei e consulta plebiscitária à população interessada.",
+      D: "Decreto do Prefeito."
+    },
+    correct: "C",
+    tema: "Título I"
+  },
+  {
+    text: "É competência do Município:",
+    options: {
+      A: "Legislar sobre matéria penal.",
+      B: "Criar distritos independentemente da legislação estadual.",
+      C: "Suplementar a legislação federal e estadual.",
+      D: "Determinar eleições estaduais."
+    },
+    correct: "C",
+    tema: "Título I"
+  },
+  {
+    text: "A elaboração do Plano Diretor é de competência:",
+    options: {
+      A: "Da União.",
+      B: "Do Município.",
+      C: "Do Estado.",
+      D: "Da Câmara dos Deputados."
+    },
+    correct: "B",
+    tema: "Título I"
+  },
+  {
+    text: "O serviço funerário e os cemitérios:",
+    options: {
+      A: "São de competência exclusiva do Estado.",
+      B: "São delegados à União.",
+      C: "Podem ser disciplinados pelo Município.",
+      D: "São atribuições do Ministério da Saúde."
+    },
+    correct: "C",
+    tema: "Título I"
+  },
+  {
+    text: "A fiscalização de peso e medidas nos locais de venda é:",
+    options: {
+      A: "De responsabilidade federal.",
+      B: "De competência da Secretaria Estadual da Fazenda.",
+      C: "Uma atribuição do Município.",
+      D: "Exigência do IBGE."
+    },
+    correct: "C",
+    tema: "Título I"
+  },
+  {
+    text: "O Município não pode:",
+    options: {
+      A: "Instituir tributos.",
+      B: "Celebrar convênios.",
+      C: "Estabelecer cultos religiosos.",
+      D: "Criar distritos."
+    },
+    correct: "C",
+    tema: "Título I"
+  },
+  {
+    text: "A concessão de isenções fiscais sem interesse público justificado:",
+    options: {
+      A: "É permitida por decreto.",
+      B: "Depende de referendo.",
+      C: "É vedada e gera nulidade do ato.",
+      D: "Pode ser feita por portaria."
+    },
+    correct: "C",
+    tema: "Título I"
+  },
+  {
+    text: "A colaboração com entidades religiosas pelo Município:",
+    options: {
+      A: "É livre e irrestrita.",
+      B: "É vedada em qualquer hipótese.",
+      C: "Pode ocorrer na forma da lei e por interesse público.",
+      D: "É permitida por resolução da Câmara."
+    },
+    correct: "C",
+    tema: "Título I"
+  }
+];
+// Exemplo de controle de abas e inicialização de recursos adicionais
+function showTab(tabId) {
+  document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(btn => btn.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  const btn = Array.from(document.querySelectorAll('nav button')).find(b => b.innerText.includes(tabId[0].toUpperCase()));
+  if (btn) btn.classList.add('active');
+  if (tabId === 'dashboard') atualizarDashboard();
+  if (tabId === 'historico') exibirHistorico();
+}
+
+function startSimulado() {
+  showTab('simulado');
+  document.getElementById("simuladoQuestoes").innerHTML = "";
+  document.getElementById("resultadoSimulado").innerHTML = "";
+}
+// Renderiza as questões na tela
+function renderQuestions(filtro = "todos") {
+  const container = document.getElementById("questions");
+  container.innerHTML = "";
+  const filtradas = filtro === "todos" ? questions : questions.filter(q => q.tema === filtro);
+
+  let current = 0;
+  function showQuestion(index) {
+    container.innerHTML = "";
+    const q = filtradas[index];
+    const div = document.createElement("div");
+    div.className = "question";
+    div.innerHTML = `<p>${index + 1}. ${q.text}</p>`;
+    ["A", "B", "C", "D"].forEach(letra => {
+      const opt = document.createElement("label");
+      opt.className = "option";
+      opt.style.display = "flex";
+      opt.style.alignItems = "center";
+
+      const radio = document.createElement("input");
+      radio.type = "radio";
+      radio.name = `q_${index}`;
+      radio.style.marginRight = "8px";
+
+      radio.onclick = () => {
+        const today = new Date().toISOString().slice(0, 10);
+        if (!stats[today]) stats[today] = {};
+        if (!stats[today][q.tema]) stats[today][q.tema] = { acertos: 0, erros: 0 };
+
+        if (letra === q.correct) {
+          opt.classList.add("correct");
+          stats[today][q.tema].acertos++;
+        } else {
+          opt.classList.add("incorrect");
+          stats[today][q.tema].erros++;
+        }
+        localStorage.setItem("desempenhoLeiOrganica", JSON.stringify(stats));
+      };
+
+      opt.appendChild(radio);
+      opt.appendChild(document.createTextNode(`${letra}) ${q.options[letra]}`));
+      div.appendChild(opt);
+    });
+    container.appendChild(div);
+    document.querySelector(".progress").textContent = `Questão ${index + 1} de ${filtradas.length}`;
+  }
+
+  showQuestion(current);
+
+  const nextBtn = document.getElementById("nextBtn");
+  nextBtn.onclick = () => {
+    if (current < filtradas.length - 1) {
+      current++;
+      showQuestion(current);
+      nextBtn.style.display = "inline-block";
+    } else {
+      nextBtn.style.display = "none";
+    }
+  };
+}
+// fechamento removido
+function filtrarPorTema() {
+  const tema = document.getElementById("temaSelect").value;
+  renderQuestions(tema);
+}
+
+let stats = JSON.parse(localStorage.getItem("desempenhoLeiOrganica")) || {};
+function atualizarDashboard() {
+  let total = 0, acertos = 0, erros = 0;
+  let temaStats = {};
+  Object.values(stats).forEach(reg => {
+    Object.entries(reg).forEach(([tema, { acertos: a, erros: e }]) => {
+      if (!temaStats[tema]) temaStats[tema] = { acertos: 0, erros: 0 };
+      temaStats[tema].acertos += a;
+      temaStats[tema].erros += e;
+      acertos += a;
+      erros += e;
+    });
+  });
+  total = acertos + erros;
+  document.getElementById("totalResp").textContent = total;
+  document.getElementById("totalAcertos").textContent = acertos;
+  document.getElementById("totalErros").textContent = erros;
+
+  const ctx = document.getElementById("graficoDesempenho").getContext("2d");
+  new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels: ["Acertos", "Erros"],
+      datasets: [{
+        data: [acertos, erros],
+        backgroundColor: ["#22c55e", "#ef4444"]
+      }]
+    },
+    options: { responsive: true }
+  });
+}
+
+function atualizarGraficoTemas() {
+  const ctx = document.getElementById("graficoTemas").getContext("2d");
+  const temas = {};
+  for (const dia in stats) {
+    for (const tema in stats[dia]) {
+      if (!temas[tema]) temas[tema] = { acertos: 0, erros: 0 };
+      temas[tema].acertos += stats[dia][tema].acertos;
+      temas[tema].erros += stats[dia][tema].erros;
+    }
+  }
+  const labels = Object.keys(temas);
+  const acertos = labels.map(t => temas[t].acertos);
+  const erros = labels.map(t => temas[t].erros);
+  new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [
+        { label: "Acertos", data: acertos, backgroundColor: "#22c55e" },
+        { label: "Erros", data: erros, backgroundColor: "#ef4444" }
+      ]
+    },
+    options: {
+      responsive: true,
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+}
+
+function exibirHistorico() {
+  const container = document.getElementById("historicoConteudo");
+  container.innerHTML = "";
+  if (!stats) return;
+  const datas = Object.keys(stats).sort((a, b) => b.localeCompare(a));
+  datas.forEach(data => {
+    const div = document.createElement("div");
+    div.style.marginBottom = "16px";
+    div.innerHTML = `<strong>${data}</strong><br>`;
+    const temas = Object.entries(stats[data]);
+    if (temas.length === 0) {
+      div.innerHTML += "Sem dados.<br>";
+    } else {
+      temas.forEach(([tema, { acertos, erros }]) => {
+        const total = acertos + erros;
+        const perc = total > 0 ? ((acertos / total) * 100).toFixed(1) : 0;
+        div.innerHTML += `${tema}: ${acertos}✔️ / ${erros}❌ (${perc}%)<br>`;
+      });
+    }
+    container.appendChild(div);
+  });
+}
+
+window.addEventListener("load", () => {
+  atualizarGraficoTemas();
+  renderQuestions();
+});
+</script>
+</body>
+  </html>
+APROVADA
